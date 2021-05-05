@@ -85,7 +85,7 @@ class TFTPServer:
                 # If this is a TFTP RRQ (Read Request) ...
                 if rrq_packet_opcode == util.TFTPOpcodes.RRQ.value:
 
-                    # Call this neat function in it's own thread
+                    # Call this neat method in it's own thread
                     # It'll make a new socket bound to the next ephemeral port + serve the client
                     threading.Thread(
                         target=self.handle_rrq_reply, args=(rrq_packet, source_ip, source_port)

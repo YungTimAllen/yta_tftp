@@ -66,8 +66,8 @@ def unpack_tftp_rrq_packet(raw_packet: bytes) -> TFTPPacketRRQ:
 
 
 def pack_tftp_data_packet(block_no: int, data: bytes) -> bytes:
-    """Given block_no and bytes (chunk) read from a file, packs to a TFTP DATA packet (bytes)
-    and returns
+    """Given block_no and bytes (chunk) from an open binary file, packs a TFTP DATA packet and
+    returns bytes.
 
     Args:
         block_no: TFTP DATA packets are chunks of a file. block_no is the order index.
@@ -76,7 +76,7 @@ def pack_tftp_data_packet(block_no: int, data: bytes) -> bytes:
     Returns:
         Bytes, a raw TFTP DATA packet
     """
-    return dump_packet(
+    return dump_dataclass_object(
         TFTPPacketDATA(opcode=bytes([0x00, 0x03]), block_no=struct.pack("!H", block_no), data=data)
     )
 
@@ -85,7 +85,7 @@ def unpack_tftp_ack_packet(raw_packet: bytes) -> TFTPPacketACK:
     """Given bytes, will unpack to dataclass for an TFTP ACK packet
 
     Args:
-        raw_packet: Bytearray received probably from a UDP socket
+        raw_packet: bytes received probably from a UDP socket
 
     Returns:
         TFTPPacketACK dataclass object
@@ -93,13 +93,13 @@ def unpack_tftp_ack_packet(raw_packet: bytes) -> TFTPPacketACK:
     return TFTPPacketACK(*struct.unpack("!HH", raw_packet))
 
 
-def dump_packet(packet_obj: object) -> bytes:
-    """Given a dataclass object, will return it as a bytearray
+def dump_dataclass_object(packet_obj: object) -> bytes:
+    """Given a dataclass object, will return it as bytes
 
     Args:
         packet_obj: A dataclass object
 
-    Returns: Bytearray representing given dataclass object
+    Returns: bytes representing given dataclass object
     """
     raw_packet = bytearray()
     for _, value in packet_obj.__dict__.items():
