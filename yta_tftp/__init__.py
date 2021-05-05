@@ -78,17 +78,17 @@ class TFTPServer:
 
             # Unpack bytes to Datastruct
             try:
-                rrq_packet = util.unpack_tftp_rrq_packet(raw_packet)
-                rrq_packet_opcode = int.from_bytes(rrq_packet.opcode, "little")
-                print("Received ", util.TFTPOpcodes(value=rrq_packet_opcode))
+                packet_obj = util.unpack_tftp_rrq_packet(raw_packet)
+                packet_obj_opcode = int.from_bytes(packet_obj.opcode, "little")
+                print("Received OpCode:", util.TFTPOpcodes(value=packet_obj_opcode).name)
 
                 # If this is a TFTP RRQ (Read Request) ...
-                if rrq_packet_opcode == util.TFTPOpcodes.RRQ.value:
+                if packet_obj_opcode == util.TFTPOpcodes.RRQ.value:
 
                     # Call this neat method in it's own thread
                     # It'll make a new socket bound to the next ephemeral port + serve the client
                     threading.Thread(
-                        target=self.handle_rrq_reply, args=(rrq_packet, source_ip, source_port)
+                        target=self.handle_rrq_reply, args=(packet_obj, source_ip, source_port)
                     ).start()
 
                 # We only care about RRQ
