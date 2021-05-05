@@ -42,8 +42,6 @@ class TFTPServer:
             # Take a chunk and init block number (chunk index) to 1
             chunk = file.read(self.chunk_sz)
             block_no = 1
-            # Get a new socket to unblock the server port
-            # Recall: self.source_port is an generator of ephemeral ports
 
             # While there is stuff left to read in the buffer (chunk isn't None) ...
             while chunk:
