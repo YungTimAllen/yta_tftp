@@ -1,15 +1,15 @@
 #!/usr/bin/env python3
-"""x"""
+"""Testing script"""
 from argparse import ArgumentParser
 from yta_tftp import TFTPServer
 
 
-def main(parser):
-    """x"""
+def main():
+    """Entry point when ran as a script"""
     server = TFTPServer()
     server.run()
 
 
 if __name__ == "__main__":
     params = ArgumentParser(description="YTA TFTP Server")
-    main(params.parse_args())
+    main()

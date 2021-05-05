@@ -12,12 +12,13 @@ class TFTPServer:
     listening_ip = ""
 
     def __init__(self, **kwargs):
+        """Constructor"""
         self.source_port = self.gen_ephemeral_port()
-        self.__dict__.update(kwargs)
+        self.__dict__.update(kwargs)  # Probably not a good idea but its neat
 
     @staticmethod
     def gen_ephemeral_port():
-        """Get an ephemeral port (Generator)"""
+        """Return an ephemeral port generator"""
         ephemeral_port_range = 49152, 65535
         i = ephemeral_port_range[0]
         while i < ephemeral_port_range[1]:
