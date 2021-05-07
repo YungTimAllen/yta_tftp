@@ -1,4 +1,5 @@
 """YTA TFTP Server Package"""
+from os.path import isfile
 import threading
 import yta_tftp.util as util
 
@@ -24,6 +25,80 @@ class TFTPServer:
         while i < ephemeral_port_range[1]:
             yield i
             i += 1
+
+    def run(self):
+        """Main loop logic. Blocks."""
+        # Server listening socket, binds to port 69 (typically)
+        socket_server = util.get_socket(bind_port=self.server_port, bind_ip=self.listening_ip)
+
+        while True:
+            # Block to Rx TFTP RRQ
+            raw_packet, (source_ip, source_port) = socket_server.recvfrom(self.max_bytes)  # BLOCKS
+
+            try:
+                # Unpack bytes to Datastruct
+                packet_obj = util.unpack_tftp_rrq_packet(raw_packet)
+                packet_obj_opcode = int.from_bytes(packet_obj.opcode, "little")
+
+                print("Received OpCode:", util.TFTPOpcodes(value=packet_obj_opcode).name)
+
+                # If this is a TFTP RRQ (Read Request) ...
+                if packet_obj_opcode == util.TFTPOpcodes.RRQ.value:
+
+                    # Check that the requested file exists ...
+                    if isfile(packet_obj.filename):
+                        # Load file to bytes and start sending DATA PDUs
+                        self.reply_with_data(packet_obj, source_ip, source_port)
+                    else:
+                        print("! File not found. Replying with ERR PDU.")
+                        self.reply_with_error(source_ip, source_port, 1)  # File not found
+
+                # We only care about RRQ
+                else:
+                    print("! Received a valid TFTP packet, but it is not a RRQ. Discarding.")
+                    self.reply_with_error(source_ip, source_port, 5)  # Unkown transfer ID
+
+            # Calling enum TFTP_Opcode with an undefined value throws ValueError
+            except ValueError:
+                print("! Received packet that was not a TFTP RRQ packet. Discarding. (Bad OpCode)")
+                self.reply_with_error(source_ip, source_port, 4)  # Illegal op
+
+    def reply_with_error(self, dst_ip: str, dst_port: int, error_code: int):
+        """Threads method handle_err_to_client
+
+        Args:
+            dst_ip: IP to address TFTP ERR PDU towards (RRQ source / calling client's IP)
+            dst_port: Port to address TFTP ERR PDU towards (RRQ source / calling client's Port)
+            error_code: Well-known TFTP error code to send in ERR PDU
+        """
+        threading.Thread(
+            target=self.handle_err_to_client,
+            args=(dst_ip, dst_port, error_code),
+        ).start()
+
+    def handle_err_to_client(self, dst_ip: str, dst_port: int, error_code: int):
+        """Handles sending a TFTP ERR PDU to the given IP and Port
+
+        The Error Message field of the ERR PDU is populated using Cisco defined error strings
+
+        Args:
+            dst_ip: IP to address TFTP ERR PDU towards (RRQ source / calling client's IP)
+            dst_port: Port to address TFTP ERR PDU towards (RRQ source / calling client's Port)
+            error_code: Well-known TFTP error code to send in ERR PDU
+        """
+        socket_reply = util.get_socket(bind_port=next(self.source_port), bind_ip=self.listening_ip)
+        raw_tftp_error_packet = util.pack_tftp_error_packet(error_code)
+        socket_reply.sendto(raw_tftp_error_packet, (dst_ip, dst_port))
+
+    def reply_with_data(self, rrq_packet: util.TFTPPacketRRQ, dst_ip: str, dst_port: int):
+        """Threads method handle_rrq_reply
+
+        Args:
+            rrq_packet: TFTPPacketRRQ datastruct, received from the listening server socket (69)
+            dst_ip: IP to address TFTP DATA PDUs towards (RRQ source / calling client's IP)
+            dst_port: Port to address TFTP DATA PDUs towards (RRQ source / calling client's Port)
+        """
+        threading.Thread(target=self.handle_rrq_reply, args=(rrq_packet, dst_ip, dst_port)).start()
 
     def handle_rrq_reply(self, rrq_packet: util.TFTPPacketRRQ, dst_ip: str, dst_port: int):
         """Handles a RRQ (Read Request), loading the target file, and sending TFTP DATA packets
@@ -66,35 +141,3 @@ class TFTPServer:
                 block_no = (block_no + 1) % 65536
 
         print(f"Done! {dst_ip}:{dst_port}:{rrq_packet.filename} -> {reply_port}")
-
-    def run(self):
-        """Main loop logic. Blocks."""
-        # Server listening socket, binds to port 69 (typically)
-        socket_server = util.get_socket(bind_port=self.server_port, bind_ip=self.listening_ip)
-
-        while True:
-            # Block to Rx TFTP RRQ
-            raw_packet, (source_ip, source_port) = socket_server.recvfrom(self.max_bytes)  # BLOCKS
-
-            # Unpack bytes to Datastruct
-            try:
-                packet_obj = util.unpack_tftp_rrq_packet(raw_packet)
-                packet_obj_opcode = int.from_bytes(packet_obj.opcode, "little")
-                print("Received OpCode:", util.TFTPOpcodes(value=packet_obj_opcode).name)
-
-                # If this is a TFTP RRQ (Read Request) ...
-                if packet_obj_opcode == util.TFTPOpcodes.RRQ.value:
-
-                    # Call this neat method in it's own thread
-                    # It'll make a new socket bound to the next ephemeral port + serve the client
-                    threading.Thread(
-                        target=self.handle_rrq_reply, args=(packet_obj, source_ip, source_port)
-                    ).start()
-
-                # We only care about RRQ
-                else:
-                    print("Received a valid TFTP packet, but it is not a RRQ. Discarding.")
-
-            # Calling enum TFTP_Opcode with an undefined value throws ValueError
-            except ValueError:
-                print("Received packet that was not a TFTP RRQ packet. Discarding. (Bad OpCode)")

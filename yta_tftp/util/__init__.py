@@ -16,6 +16,18 @@ class TFTPOpcodes(Enum):
     OACK = 6  # Option acknowledgment.	RFC 2347
 
 
+TFTPErrorCodes = {
+    0: "Not defined, see error message (if any)",
+    1: "File not found",
+    2: "Access violation",
+    3: "Disk full or allocation exceeded",
+    4: "Illegal TFTP operation",
+    5: "Unknown transfer ID",
+    6: "File already exists",
+    7: "No such user.",
+}
+
+
 @dataclass()
 class TFTPPacketRRQ:
     """Packet Payload Field Struct"""
@@ -40,6 +52,16 @@ class TFTPPacketACK:
 
     opcode: bytes
     block_no: bytes
+
+
+@dataclass()
+class TFTPPacketERROR:
+    """Packet Payload Field Struct"""
+
+    opcode: bytes  # 0x00, uint8
+    error_code: bytes  # uint16
+    error_msg: bytes  # str
+    end: bytes  # 0x00
 
 
 def unpack_tftp_rrq_packet(raw_packet: bytes) -> TFTPPacketRRQ:
@@ -77,7 +99,11 @@ def pack_tftp_data_packet(block_no: int, data: bytes) -> bytes:
         Bytes, a raw TFTP DATA packet
     """
     return dump_dataclass_object(
-        TFTPPacketDATA(opcode=bytes([0x00, 0x03]), block_no=struct.pack("!H", block_no), data=data)
+        TFTPPacketDATA(
+            opcode=bytes([0x00, TFTPOpcodes.DATA.value]),
+            block_no=struct.pack("!H", block_no),
+            data=data,
+        )
     )
 
 
@@ -91,6 +117,36 @@ def unpack_tftp_ack_packet(raw_packet: bytes) -> TFTPPacketACK:
         TFTPPacketACK dataclass object
     """
     return TFTPPacketACK(*struct.unpack("!HH", raw_packet))
+
+
+def pack_tftp_error_packet(error_code: int) -> bytes:
+    """
+
+    Error Codes
+      - 0         Not defined, see error message (if any).
+      - 1         File not found.
+      - 2         Access violation.
+      - 3         Disk full or allocation exceeded.
+      - 4         Illegal TFTP operation.
+      - 5         Unknown transfer ID.
+      - 6         File already exists.
+      - 7         No such user.
+
+    Args:
+        error_code:
+        error_reason:
+
+    Returns:
+
+    """
+    return dump_dataclass_object(
+        TFTPPacketERROR(
+            opcode=bytes([0x00, TFTPOpcodes.ERROR.value]),
+            error_code=struct.pack("!H", error_code),
+            error_msg=TFTPErrorCodes[error_code].encode("ascii"),
+            end=bytes([0x00]),
+        )
+    )
 
 
 def dump_dataclass_object(packet_obj: object) -> bytes:
