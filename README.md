@@ -17,7 +17,7 @@ reasonably documented.
 ## Gotchas
 
 * Only supports RRQ (Read Requests) from calling clients
-* If the expected file to serve is missing, it will break
+* ~~If the expected file to serve is missing, it will break~~ ***Fixed***
 * Do not use this to host anything serious - you do so at your own risk
 
 ## Example 1
