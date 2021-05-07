@@ -65,7 +65,7 @@ class TFTPPacketERROR:
 
 
 def unpack_tftp_rrq_packet(raw_packet: bytes) -> TFTPPacketRRQ:
-    """Given bytes, will unpack to dataclass for an TFTP RRQ packet
+    """Given bytes, will unpack to dataclass for a TFTP RRQ packet
 
     Q: Why don't we use struct.unpack?
 
@@ -120,7 +120,7 @@ def unpack_tftp_ack_packet(raw_packet: bytes) -> TFTPPacketACK:
 
 
 def pack_tftp_error_packet(error_code: int) -> bytes:
-    """
+    """Given an error code, packs a TFTP ERR packet to bytes and returns
 
     Error Codes
       - 0         Not defined, see error message (if any).
@@ -133,11 +133,10 @@ def pack_tftp_error_packet(error_code: int) -> bytes:
       - 7         No such user.
 
     Args:
-        error_code:
-        error_reason:
+        error_code: Integer value for a well-known TFTP error code
 
     Returns:
-
+        bytes, a TFTP ERR packet
     """
     return dump_dataclass_object(
         TFTPPacketERROR(
